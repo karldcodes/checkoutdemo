@@ -3,9 +3,11 @@
 
 ```mermaid
 sequenceDiagram
-    Merchant-)Auth: /login
-    Auth-)Merchant: JWT token (1 hour)
-    Merchant-)PaymentGateway: PaymentRequest
+    Merchant-)PaymentGateway: /login
+    PaymentGateway-)Auth: Verify login
+    Auth-)PaymentGateway: JWT token (1 hour)
+    PaymentGateway-)Merchant: JWT
+    Merchant-)PaymentGateway: /api/payments PaymentRequest
     alt NotAuthorized
         PaymentGateway-)Merchant:
     end
