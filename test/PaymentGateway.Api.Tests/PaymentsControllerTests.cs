@@ -16,7 +16,6 @@ using Microsoft.Extensions.Options;
 using Moq;
 
 using PaymentGateway.Api.Controllers;
-using PaymentGateway.Api.HttpClients;
 using PaymentGateway.Api.Interfaces;
 using PaymentGateway.Api.Metrics;
 using PaymentGateway.Api.Models;
@@ -106,7 +105,8 @@ public class PaymentsControllerTests
 
         var webApplicationFactory = new WebApplicationFactory<PaymentsController>();
         var client = webApplicationFactory.WithWebHostBuilder(builder =>
-            builder.ConfigureServices(services => {
+            builder.ConfigureServices(services =>
+            {
                 services.RemoveAll<IPaymentsRepository>();
                 services.AddSingleton<IPaymentsRepository>(paymentsRepository);
                 services.AddSingleton<IAcquiringBankClient, FakeAcquiringBankClient>();
@@ -158,5 +158,66 @@ public class PaymentsControllerTests
         Assert.Single(paymentsRepository._payments);
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal(PaymentStatus.Authorized.ToString(), paymentResponse?.Status);
+    }
+
+    [Fact]
+    public async Task Payments_invalidCardNumber_returns400()
+    {
+        // Arrange
+        var paymentsRepository = new FakePaymentsRepository();
+
+        var bankClient = new Mock<IAcquiringBankClient>();
+
+        var webApplicationFactory = new WebApplicationFactory<PaymentsController>();
+        var client = webApplicationFactory.WithWebHostBuilder(builder =>
+            builder.ConfigureServices(services =>
+            {
+                services.RemoveAll<IPaymentsRepository>();
+                services.AddSingleton<IPaymentsRepository>(paymentsRepository);
+                services.AddSingleton<IAcquiringBankClient>(bankClient.Object);
+                services.AddSingleton<IISOCurrencyCodes, ISOCurrencyCodes>();
+                services.AddScoped<IValidator<PaymentRequest>, PaymentRequestValidator>();
+                services.AddSingleton<IIdempotancyRepository, IdempotancyRepository>();
+                services.AddSingleton<IPaymentMetrics, PaymentMetrics>();
+                services
+                .AddAuthentication(options =>
+                {
+                    options.DefaultAuthenticateScheme = TestAuthHandler.SchemeName;
+                    options.DefaultChallengeScheme = TestAuthHandler.SchemeName;
+                    options.DefaultScheme = TestAuthHandler.SchemeName;
+                })
+                .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>(
+                    TestAuthHandler.SchemeName,
+                    options => { });
+            }))
+            .CreateClient();
+        var request = new PaymentRequest
+        {
+            Amount = 100,
+            CardNumber = "invalid-card-number",
+            Currency = "GBP",
+            ExpiryMonth = DateTime.Now.Month,
+            ExpiryYear = DateTime.Now.Year + 1,
+            CVV = "123"
+        };
+        var httpRequest = new HttpRequestMessage(
+        HttpMethod.Post,
+        "/api/payments");
+        httpRequest.Headers.Add(
+        "Idempotency-Key",
+        Guid.NewGuid().ToString());
+        httpRequest.Content = JsonContent.Create(request);
+
+
+        // Act
+        var response = await client.SendAsync(httpRequest, TestContext.Current.CancellationToken);
+        var paymentResponse = await response.Content.ReadFromJsonAsync<PaymentResponse>(cancellationToken: TestContext.Current.CancellationToken);
+
+
+        // Assert
+        bankClient.Verify(b => b.SendPaymentAsync(It.IsAny<Models.AcquiringBank.PaymentRequest>()), Times.Never);
+        Assert.Single(paymentsRepository._payments);
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(PaymentStatus.Rejected.ToString(), paymentResponse?.Status);
     }
 }
