@@ -13,7 +13,6 @@ using PaymentGateway.Api.Models.Merchant;
 
 namespace PaymentGateway.Api.Controllers;
 
-
 [Route("api/[controller]")]
 [ApiController]
 public partial class PaymentsController : ControllerBase // inheriting from controllerbase as we dont need views
@@ -37,32 +36,6 @@ public partial class PaymentsController : ControllerBase // inheriting from cont
         _acquiringBank = acquiringBank;
     }
 
-    // added here for structured logging with source generators,
-    // this allows us to have strongly typed log messages with better performance
-    // in real application it could be defined in a separate static class for better organization
-    [LoggerMessage(Level = LogLevel.Information, Message = "Processing payment request for amount {Amount} {Currency}")]
-    private partial void LogReceivedPaymentRequest(int amount, string currency);
-
-    [LoggerMessage(Level = LogLevel.Information, Message = "Payment request validation failed: {Errors}")]
-    private partial void LogPaymentValidationFailure(string errors);
-
-    [LoggerMessage(Level = LogLevel.Information, Message = "Payment processed successfully for amount {Amount} {Currency}")]
-    private partial void LogPaymentProcessedSuccessfully(int amount, string currency);
-
-    [LoggerMessage(Level = LogLevel.Information, Message = "Received request to get payment with id {PaymentId}")]
-    private partial void LogReceivedGetPaymentRequest(Guid paymentId);
-
-    [LoggerMessage(Level = LogLevel.Information, Message = "Payment with id {PaymentId} not found")]
-    private partial void LogPaymentNotFound(Guid paymentId);
-
-    [LoggerMessage(Level =LogLevel.Information, Message = "Payment with id {PaymentId} found")]
-    private partial void LogPaymentFound(Guid paymentId);
-
-    [LoggerMessage(Level = LogLevel.Information, Message ="Payment rejected {PaymentId}")]
-    private partial void LogPaymentRejected(Guid paymentId);
-    [LoggerMessage(Level = LogLevel.Information, Message = "Payment declined {PaymentId}")]
-    private partial void LogPaymentDeclined(Guid paymentId);
-
 
     // Allow only users with merchant claim to start a payment
     [Authorize(Roles = "Merchant")]
@@ -70,7 +43,7 @@ public partial class PaymentsController : ControllerBase // inheriting from cont
     [HttpPost]
     public async Task<ActionResult<PaymentResponse>> PostPaymentAsync([FromBody] PaymentRequest request)
     {
-        LogReceivedPaymentRequest(request.Amount, request.Currency);
+        PaymentsLog.ReceivedPaymentRequest(_logger, request.Amount, request.Currency);
 
         // The metrics gathering could be improved by using a more robust solution
         // such as a middleware or an action filter
@@ -82,7 +55,7 @@ public partial class PaymentsController : ControllerBase // inheriting from cont
         var result = _paymentRequestValidator.Validate(request);
         if (!result.IsValid)
         {
-            LogPaymentValidationFailure(string.Join(", ", result.Errors.Select(e => e.ErrorMessage)));
+            PaymentsLog.PaymentValidationFailure(_logger, string.Join(", ", result.Errors.Select(e => e.ErrorMessage)));
             stopwatch.Stop();
             _paymentMetrics.RecordPaymentProcessingDuration(stopwatch.Elapsed.TotalMilliseconds);
             _paymentMetrics.RecordPaymentProcessingRejected();
@@ -115,12 +88,14 @@ public partial class PaymentsController : ControllerBase // inheriting from cont
             Status = paymentResponse.Status,
             AuthorizationCode = paymentResponse.PaymentResponse?.AuthorizationCode ?? ""
         };
+
         await _paymentsRepository.Add(payment);
 
 
         if (paymentResponse.Status == PaymentStatus.Declined)
         {
-            LogPaymentDeclined(payment.Id);
+            PaymentsLog.PaymentDeclined(_logger, payment.Id);
+            
             stopwatch.Stop();
             _paymentMetrics.RecordPaymentProcessingDuration(stopwatch.Elapsed.TotalMilliseconds);
             _paymentMetrics.RecordPaymentProcessingDeclined();
@@ -138,7 +113,8 @@ public partial class PaymentsController : ControllerBase // inheriting from cont
 
         if (paymentResponse.Status == PaymentStatus.Rejected)
         {
-            LogPaymentRejected(payment.Id);
+            PaymentsLog.PaymentRejected(_logger, payment.Id);
+
             stopwatch.Stop();
             _paymentMetrics.RecordPaymentProcessingDuration(stopwatch.Elapsed.TotalMilliseconds);
             _paymentMetrics.RecordPaymentProcessingRejected();
@@ -154,8 +130,8 @@ public partial class PaymentsController : ControllerBase // inheriting from cont
             });
         }
 
+        PaymentsLog.PaymentProcessedSuccessfully(_logger, payment.Id);
 
-        LogPaymentProcessedSuccessfully(request.Amount, request.Currency);
         stopwatch.Stop();
         _paymentMetrics.RecordPaymentProcessingDuration(stopwatch.Elapsed.TotalMilliseconds);
         _paymentMetrics.RecordPaymentProcessingSuccess();
@@ -170,23 +146,22 @@ public partial class PaymentsController : ControllerBase // inheriting from cont
             ExpiryYear = request.ExpiryYear,
             Status = PaymentStatus.Authorized.ToString(),
         });
-
     }
 
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<PaymentResponse?>> GetPaymentAsync(Guid id)
     {
-        LogReceivedGetPaymentRequest(id);
+        PaymentsLog.ReceivedGetPaymentRequest(_logger, id);
         //todo add metrics for this endpoint as well
         var payment = await _paymentsRepository.Get(id);
 
         if (payment == null)
         {
-            LogPaymentNotFound(id);
+            PaymentsLog.PaymentNotFound(_logger, id);
             return NotFound();
         }
 
-        LogPaymentFound(id);
+        PaymentsLog.PaymentFound(_logger, id);
         return Ok(new PaymentResponse
         {
             Id = payment.Id,
