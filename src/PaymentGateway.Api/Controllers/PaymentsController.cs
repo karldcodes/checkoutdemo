@@ -1,0 +1,201 @@
+﻿using System.Diagnostics;
+using System.Net;
+
+using FluentValidation;
+
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+
+using PaymentGateway.Api.Filters;
+using PaymentGateway.Api.Interfaces;
+using PaymentGateway.Api.Models;
+using PaymentGateway.Api.Models.Merchant;
+
+namespace PaymentGateway.Api.Controllers;
+
+
+[Route("api/[controller]")]
+[ApiController]
+public partial class PaymentsController : ControllerBase // inheriting from controllerbase as we dont need views
+{
+    private readonly IPaymentsRepository _paymentsRepository;
+    private readonly IValidator<PaymentRequest> _paymentRequestValidator;
+    private readonly IPaymentMetrics _paymentMetrics;
+    private readonly ILogger<PaymentsController> _logger;
+    private readonly IAcquiringBank _acquiringBank;
+
+    public PaymentsController(IPaymentsRepository paymentsRepository, 
+        IValidator<PaymentRequest> paymentRequestValidator,
+        IPaymentMetrics paymentMetrics,
+        ILogger<PaymentsController> logger,
+        IAcquiringBank acquiringBank)
+    {
+        _paymentsRepository = paymentsRepository;
+        _paymentRequestValidator = paymentRequestValidator;
+        _paymentMetrics = paymentMetrics;
+        _logger = logger;
+        _acquiringBank = acquiringBank;
+    }
+
+    // added here for structured logging with source generators,
+    // this allows us to have strongly typed log messages with better performance
+    // in real application it could be defined in a separate static class for better organization
+    [LoggerMessage(Level = LogLevel.Information, Message = "Processing payment request for amount {Amount} {Currency}")]
+    private partial void LogReceivedPaymentRequest(int amount, string currency);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Payment request validation failed: {Errors}")]
+    private partial void LogPaymentValidationFailure(string errors);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Payment processed successfully for amount {Amount} {Currency}")]
+    private partial void LogPaymentProcessedSuccessfully(int amount, string currency);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Received request to get payment with id {PaymentId}")]
+    private partial void LogReceivedGetPaymentRequest(Guid paymentId);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Payment with id {PaymentId} not found")]
+    private partial void LogPaymentNotFound(Guid paymentId);
+
+    [LoggerMessage(Level =LogLevel.Information, Message = "Payment with id {PaymentId} found")]
+    private partial void LogPaymentFound(Guid paymentId);
+
+    [LoggerMessage(Level = LogLevel.Information, Message ="Payment rejected {PaymentId}")]
+    private partial void LogPaymentRejected(Guid paymentId);
+    [LoggerMessage(Level = LogLevel.Information, Message = "Payment declined {PaymentId}")]
+    private partial void LogPaymentDeclined(Guid paymentId);
+
+
+    // Allow only users with merchant claim to start a payment
+    [Authorize(Roles = "Merchant")]
+    [IdempotencyKey] // custom filter to handle idempotency key validation and processing
+    [HttpPost]
+    public async Task<ActionResult<PaymentResponse>> PostPaymentAsync([FromBody] PaymentRequest request)
+    {
+        LogReceivedPaymentRequest(request.Amount, request.Currency);
+
+        // The metrics gathering could be improved by using a more robust solution
+        // such as a middleware or an action filter
+        var stopwatch = Stopwatch.StartNew();
+        _paymentMetrics.RecordPaymentProcessCall();
+        // authentication and authorization would go here
+
+        // validate request
+        var result = _paymentRequestValidator.Validate(request);
+        if (!result.IsValid)
+        {
+            LogPaymentValidationFailure(string.Join(", ", result.Errors.Select(e => e.ErrorMessage)));
+            stopwatch.Stop();
+            _paymentMetrics.RecordPaymentProcessingDuration(stopwatch.Elapsed.TotalMilliseconds);
+            _paymentMetrics.RecordPaymentProcessingRejected();
+            _paymentMetrics.RecordPaymentHttpStatusCode(HttpStatusCode.BadRequest);
+            return BadRequest(result.Errors);
+        }
+
+        // process payment - in a real implementation this would involve calling out to a payment processor
+        // todo add polly for retries etc
+        var paymentResponse = await _acquiringBank.SendPayment(new Models.AcquiringBank.PaymentRequest
+        {
+            Amount = request.Amount,
+            Currency = request.Currency,
+            CardNumber = request.CardNumber,
+            ExpiryDate = request.ExpiryMonth + "/" + request.ExpiryYear
+        });
+
+
+        // save payment to repository - in a real implementation this would likely be done in a background job
+        // or as part of a transaction to ensure data consistency.
+        // Id is generated here for simplicity, but in a real application it would likely be generated by the database or a separate service.
+        var payment = new Payment
+        {
+            Amount = request.Amount,
+            Currency = request.Currency,
+            CardNumber = request.CardNumber[^4..],
+            ExpiryMonth = request.ExpiryMonth,
+            ExpiryYear = request.ExpiryYear,
+            CVV = request.CVV,
+            Status = paymentResponse.Status,
+            AuthorizationCode = paymentResponse.PaymentResponse?.AuthorizationCode ?? ""
+        };
+        await _paymentsRepository.Add(payment);
+
+
+        if (paymentResponse.Status == PaymentStatus.Declined)
+        {
+            LogPaymentDeclined(payment.Id);
+            stopwatch.Stop();
+            _paymentMetrics.RecordPaymentProcessingDuration(stopwatch.Elapsed.TotalMilliseconds);
+            _paymentMetrics.RecordPaymentProcessingDeclined();
+            _paymentMetrics.RecordPaymentHttpStatusCode(HttpStatusCode.OK);
+            return Ok(new PaymentResponse
+            {
+                Amount = request.Amount,
+                Currency = request.Currency,
+                CardNumberLastFour = request.CardNumber[^4..],
+                ExpiryMonth = request.ExpiryMonth,
+                ExpiryYear = request.ExpiryYear,
+                Status = PaymentStatus.Declined.ToString(),
+            });
+        }
+
+        if (paymentResponse.Status == PaymentStatus.Rejected)
+        {
+            LogPaymentRejected(payment.Id);
+            stopwatch.Stop();
+            _paymentMetrics.RecordPaymentProcessingDuration(stopwatch.Elapsed.TotalMilliseconds);
+            _paymentMetrics.RecordPaymentProcessingRejected();
+            _paymentMetrics.RecordPaymentHttpStatusCode(HttpStatusCode.BadRequest);
+            return BadRequest(new PaymentResponse
+            {
+                Amount = request.Amount,
+                Currency = request.Currency,
+                CardNumberLastFour = request.CardNumber[^4..],
+                ExpiryMonth = request.ExpiryMonth,
+                ExpiryYear = request.ExpiryYear,
+                Status = PaymentStatus.Rejected.ToString()
+            });
+        }
+
+
+        LogPaymentProcessedSuccessfully(request.Amount, request.Currency);
+        stopwatch.Stop();
+        _paymentMetrics.RecordPaymentProcessingDuration(stopwatch.Elapsed.TotalMilliseconds);
+        _paymentMetrics.RecordPaymentProcessingSuccess();
+        _paymentMetrics.RecordPaymentHttpStatusCode(HttpStatusCode.OK);
+        return Ok(new PaymentResponse
+        {
+            Id = payment.Id,
+            Amount = request.Amount,
+            Currency = request.Currency,
+            CardNumberLastFour = request.CardNumber[^4..],
+            ExpiryMonth = request.ExpiryMonth,
+            ExpiryYear = request.ExpiryYear,
+            Status = PaymentStatus.Authorized.ToString(),
+        });
+
+    }
+
+    [HttpGet("{id:guid}")]
+    public async Task<ActionResult<PaymentResponse?>> GetPaymentAsync(Guid id)
+    {
+        LogReceivedGetPaymentRequest(id);
+        //todo add metrics for this endpoint as well
+        var payment = await _paymentsRepository.Get(id);
+
+        if (payment == null)
+        {
+            LogPaymentNotFound(id);
+            return NotFound();
+        }
+
+        LogPaymentFound(id);
+        return Ok(new PaymentResponse
+        {
+            Id = payment.Id,
+            Amount = payment.Amount,
+            Currency = payment.Currency,
+            CardNumberLastFour = payment.CardNumber,
+            ExpiryMonth = payment.ExpiryMonth,
+            ExpiryYear = payment.ExpiryYear,
+            Status = payment.Status.ToString(),
+        });
+    }
+}
