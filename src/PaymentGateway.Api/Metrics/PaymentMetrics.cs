@@ -3,6 +3,7 @@ using System.Diagnostics.Metrics;
 using System.Net;
 
 using PaymentGateway.Api.Interfaces;
+using PaymentGateway.Api.Models;
 
 namespace PaymentGateway.Api.Metrics
 {
@@ -10,9 +11,7 @@ namespace PaymentGateway.Api.Metrics
     {
         private readonly Histogram<double> _paymentProcessingDuration;
         private readonly Histogram<HttpStatusCode> _paymentHttpStatusCodes;
-        private readonly Counter<int> _paymentProcessingSuccess;
-        private readonly Counter<int> _paymentProcessingDeclined;
-        private readonly Counter<int> _paymentProcessingRejected;
+        private readonly Histogram<PaymentStatus> _paymentStatusCodes;
         private readonly Counter<int> _paymentProcessCalls;
         public PaymentMetrics(IMeterFactory meterFactory)
         {
@@ -27,18 +26,12 @@ namespace PaymentGateway.Api.Metrics
                 name: "payment_processing_duration",
                 unit: "ms",
                 description: "Duration of payment processing in milliseconds");
-            _paymentProcessingSuccess = meter.CreateCounter<int>(
-                name: "payment_processing_success",
-                unit: "count",
-                description: "Number of successful payment processing attempts");
-            _paymentProcessingDeclined = meter.CreateCounter<int>(
-                name: "payment_processing_declined",
-                unit: "count",
-                description: "Number of declined payment processing attempts");
-            _paymentProcessingRejected = meter.CreateCounter<int>(
-                name: "payment_processing_rejected",
-                unit: "count",
-                description: "Number of rejected payment processing attempts");
+
+            _paymentStatusCodes = meter.CreateHistogram<PaymentStatus>(
+                name: "payment_status_codes",
+                unit: "status_code",
+                description: "Payment status codes");
+
             _paymentProcessCalls = meter.CreateCounter<int>(
                 name: "payment_process_calls",
                 unit: "count",
@@ -55,24 +48,14 @@ namespace PaymentGateway.Api.Metrics
             _paymentProcessingDuration.Record(durationMs);
         }
 
-        public void RecordPaymentProcessingSuccess()
+        public void RecordPaymentStatus(PaymentStatus status)
         {
-            _paymentProcessingSuccess.Add(1);
-        }
-
-        public void RecordPaymentProcessingDeclined()
-        {
-            _paymentProcessingDeclined.Add(1);
+            _paymentStatusCodes.Record(status);
         }
 
         public void RecordPaymentProcessCall()
         {
             _paymentProcessCalls.Add(1);
-        }
-
-        public void RecordPaymentProcessingRejected()
-        {
-            _paymentProcessingRejected.Add(1);
         }
     }
 }

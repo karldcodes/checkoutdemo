@@ -1,4 +1,6 @@
-﻿namespace PaymentGateway.Api.Controllers;
+﻿using PaymentGateway.Api.Models;
+
+namespace PaymentGateway.Api.Controllers;
 
 public static partial class PaymentsLog
 {
@@ -27,9 +29,10 @@ public static partial class PaymentsLog
         EventId = 1002,
         EventName = "ProcessedSuccessfully",
         Level = LogLevel.Information,
-        Message = "Payment processed successfully with id {PaymentId}")]
-    internal static partial void PaymentProcessedSuccessfully(
+        Message = "Payment processed with status {Status} and id {PaymentId}")]
+    internal static partial void PaymentProcessedStatus(
         ILogger logger,
+        PaymentStatus status,
         Guid paymentId);
 
     [LoggerMessage(
