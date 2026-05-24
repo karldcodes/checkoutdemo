@@ -1,16 +1,13 @@
 ﻿using System.Security.Claims;
 using System.Text;
 
-using Microsoft.AspNetCore.Identity.Data;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
+using PaymentGateway.Api.Models.Auth;
 
 namespace PaymentGateway.Api.Controllers
 {
-    public record LoginRequest(string Email, string Password);
-    public record User(string Email, string Password, string Role);
-
     [ApiController]
     [Route("api/auth")]
     public class AuthController : ControllerBase
