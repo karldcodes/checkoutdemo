@@ -57,7 +57,6 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-builder.Services.AddSingleton<PaymentsRepository>();
 builder.Services.AddSingleton<IISOCurrencyCodes, ISOCurrencyCodes>();
 builder.Services.AddScoped<IValidator<PaymentRequest>, PaymentRequestValidator>();
 builder.Services.AddSingleton<IPaymentsRepository, PaymentsRepository>();

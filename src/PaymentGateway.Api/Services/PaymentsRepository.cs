@@ -6,15 +6,15 @@ namespace PaymentGateway.Api.Services;
 
 public class PaymentsRepository : IPaymentsRepository
 {
-    public List<Payment> Payments = new();
+    private readonly List<Payment> _payments = [];
     
     public async Task Add(Payment payment)
     {
-        Payments.Add(payment);
+        _payments.Add(payment);
     }
 
     public async Task<Payment?> Get(Guid id)
     {
-        return Payments.FirstOrDefault(p => p.Id == id);
+        return _payments.FirstOrDefault(p => p.Id == id);
     }
 }

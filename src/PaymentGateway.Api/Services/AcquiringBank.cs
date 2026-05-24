@@ -28,7 +28,6 @@ namespace PaymentGateway.Api.Services
                     _logger.LogInformation("Invalid payment request received");
                     return new SendPaymentResult
                     {
-                        IsSuccessful = false,
                         Status = PaymentStatus.Rejected
                     };
                 }
@@ -46,7 +45,6 @@ namespace PaymentGateway.Api.Services
                         _logger.LogInformation("Payment authorized by acquiring bank");
                         return new SendPaymentResult
                         {
-                            IsSuccessful = true,
                             Status = PaymentStatus.Authorized,
                             PaymentResponse = paymentResponse
                         };
@@ -56,7 +54,6 @@ namespace PaymentGateway.Api.Services
                         _logger.LogInformation("Payment declined by acquiring bank");
                         return new SendPaymentResult
                         {
-                            IsSuccessful = true,
                             Status = PaymentStatus.Declined,
                             PaymentResponse = paymentResponse
                         };
@@ -70,7 +67,6 @@ namespace PaymentGateway.Api.Services
 
                     return new SendPaymentResult
                     {
-                        IsSuccessful = false,
                         Status = PaymentStatus.Rejected,
                     };
                 }                
@@ -83,7 +79,6 @@ namespace PaymentGateway.Api.Services
                 _logger.LogError(ex, "Bank request timed out");
                 return new SendPaymentResult
                 {
-                    IsSuccessful = false,
                     Status = PaymentStatus.Rejected
                 };
             }
@@ -92,7 +87,6 @@ namespace PaymentGateway.Api.Services
                 _logger.LogError(ex, "Network error calling bank");
                 return new SendPaymentResult
                 {
-                    IsSuccessful = false,
                     Status = PaymentStatus.Rejected
                 };
             }
@@ -101,7 +95,6 @@ namespace PaymentGateway.Api.Services
                 _logger.LogError(ex, "Failed to deserialize payment response from acquiring bank");
                 return new SendPaymentResult
                 {
-                    IsSuccessful = false,
                     Status = PaymentStatus.Rejected
                 };
             }
@@ -110,7 +103,6 @@ namespace PaymentGateway.Api.Services
                 _logger.LogError(ex, "Unexpected error");
                 return new SendPaymentResult
                 {
-                    IsSuccessful = false,
                     Status = PaymentStatus.Rejected
                 };
             }
