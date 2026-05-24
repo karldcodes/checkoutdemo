@@ -13,6 +13,7 @@ using OpenTelemetry.Trace;
 using PaymentGateway.Api.HttpClients;
 using PaymentGateway.Api.Interfaces;
 using PaymentGateway.Api.Metrics;
+using PaymentGateway.Api.Middleware;
 using PaymentGateway.Api.Models.Merchant;
 using PaymentGateway.Api.Services;
 using PaymentGateway.Api.Validation.Merchant;
@@ -62,6 +63,7 @@ builder.Services.AddScoped<IValidator<PaymentRequest>, PaymentRequestValidator>(
 builder.Services.AddSingleton<IPaymentsRepository, PaymentsRepository>();
 builder.Services.AddSingleton<IIdempotancyRepository, IdempotancyRepository>();
 builder.Services.AddSingleton<IPaymentMetrics, PaymentMetrics>();
+builder.Services.AddScoped<IAcquiringBank, AcquiringBank>();
 
 builder.Services.AddHttpContextAccessor();
 // Register the AcquiringBankClient with an HttpClient and add a resilience handler for retries and circuit breaking
@@ -133,6 +135,8 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 
 app.UseAuthorization();
+
+app.UseMiddleware<MetricsMiddleware>();
 
 app.MapControllers();
 

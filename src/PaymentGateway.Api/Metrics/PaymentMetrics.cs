@@ -10,14 +10,14 @@ namespace PaymentGateway.Api.Metrics
     public class PaymentMetrics : IPaymentMetrics
     {
         private readonly Histogram<double> _paymentProcessingDuration;
-        private readonly Histogram<HttpStatusCode> _paymentHttpStatusCodes;
-        private readonly Histogram<PaymentStatus> _paymentStatusCodes;
+        private readonly Histogram<int> _paymentHttpStatusCodes;
+        private readonly Histogram<int> _paymentStatusCodes;
         private readonly Counter<int> _paymentProcessCalls;
         public PaymentMetrics(IMeterFactory meterFactory)
         {
             var meter = meterFactory.Create("PaymentGateway.Api.Metrics");
 
-            _paymentHttpStatusCodes = meter.CreateHistogram<HttpStatusCode>(
+            _paymentHttpStatusCodes = meter.CreateHistogram<int>(
                 name: "payment_http_status_codes",
                 unit: "status_code",
                 description: "HTTP status codes returned by payment processing");
@@ -27,7 +27,7 @@ namespace PaymentGateway.Api.Metrics
                 unit: "ms",
                 description: "Duration of payment processing in milliseconds");
 
-            _paymentStatusCodes = meter.CreateHistogram<PaymentStatus>(
+            _paymentStatusCodes = meter.CreateHistogram<int>(
                 name: "payment_status_codes",
                 unit: "status_code",
                 description: "Payment status codes");
@@ -40,7 +40,7 @@ namespace PaymentGateway.Api.Metrics
 
         public void RecordPaymentHttpStatusCode(HttpStatusCode statusCode)
         {
-            _paymentHttpStatusCodes.Record(statusCode);
+            _paymentHttpStatusCodes.Record((int)statusCode);
         }
 
         public void RecordPaymentProcessingDuration(double durationMs)
@@ -50,7 +50,7 @@ namespace PaymentGateway.Api.Metrics
 
         public void RecordPaymentStatus(PaymentStatus status)
         {
-            _paymentStatusCodes.Record(status);
+            _paymentStatusCodes.Record((int)status);
         }
 
         public void RecordPaymentProcessCall()
