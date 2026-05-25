@@ -4,6 +4,54 @@ This gateway allows a merchant to send a payment request to an acquiring bank an
 
 Payments are also stored in the gateway along with the process status and can be retrieved via the payments get endpoint.
 
+```
+sequenceDiagram
+    Merchant-)PaymentGateway: /login
+    PaymentGateway-)Auth: Verify login
+    Auth-)PaymentGateway: JWT token (1 hour)
+    PaymentGateway-)Merchant: JWT
+    Merchant-)PaymentGateway: /api/payments PaymentRequest
+    alt NotAuthorized
+        PaymentGateway-)Merchant: 401
+    end
+    alt NotAuthenticated
+        PaymentGateway-)Merchant: 403
+    end
+    alt IdepotancyAlreadyCompleted
+        PaymentGateway-)Merchant: 200 Cached response
+    end
+    alt IdepotancyStillProcessing
+        PaymentGateway-)Merchant: 409 Conflict
+    end
+    alt IdepontancyKeyMissing
+        PaymentGateway-)Merchant: 400 Bad request
+    end
+
+    PaymentGateway-)Validator: PaymentRequest
+    Validator-)PaymentGateway: ValidationResult
+    alt FailedValidation
+        PaymentGateway-)Merchant: 400
+    else Passed validation
+
+    PaymentGateway-)AcquiringBank: PaymentRequest
+    AcquiringBank-)PaymentGateway: PaymentResponse
+    
+    end
+
+    PaymentGateway-)PaymentRepository: Save
+
+    alt DeclinedStatus
+        PaymentGateway-)Merchant: 400 Declined status PaymentResponse
+    end
+
+    alt RejectedStatus
+        PaymentGateway-)Merchant: 400 Rejected status PaymentResponse
+    end
+
+    PaymentGateway-)Merchant: Authorized status PaymentResponse
+```
+
+
 # Assumptions
 
 * PCI-sensitive data is not stored
@@ -16,6 +64,7 @@ Payments are also stored in the gateway along with the process status and can be
 * Saving data to repositories never errors
 * No observability platform needed to be setup and logging to the console is acceptable
 * The gateway does not need to be containerized or scaled
+* There is only one acquiring bank
 
 # Architecture
 
