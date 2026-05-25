@@ -68,12 +68,13 @@ public partial class PaymentsController : ControllerBase // inheriting from cont
         else
         {
             // call acquiring bank as validation is successful
-            acquiringBankResponse = await _acquiringBank.SendPayment(new Models.AcquiringBank.PaymentRequest
+            acquiringBankResponse = await _acquiringBank.SendPayment(new AcquiringBank.PaymentRequest
             {
                 Amount = request.Amount,
                 Currency = request.Currency,
                 CardNumber = request.CardNumber,
-                ExpiryDate = request.ExpiryMonth + "/" + request.ExpiryYear
+                ExpiryDate = request.ExpiryMonth + "/" + request.ExpiryYear,
+                Cvv = request.Cvv
             });
             paymentStatus = acquiringBankResponse.Status;
         }
@@ -86,7 +87,7 @@ public partial class PaymentsController : ControllerBase // inheriting from cont
             CardNumber = MaskCardNumber(request.CardNumber),
             ExpiryMonth = request.ExpiryMonth,
             ExpiryYear = request.ExpiryYear,
-            CVV = request.CVV,
+            Cvv = request.Cvv,
             Status = paymentStatus,
             AuthorizationCode = acquiringBankResponse?.PaymentResponse?.AuthorizationCode ?? ""
         };

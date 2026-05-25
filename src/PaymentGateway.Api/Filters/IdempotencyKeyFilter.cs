@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc.Filters;
 using PaymentGateway.Api.Enums;
 using PaymentGateway.Api.Interfaces;
 using PaymentGateway.Api.Models;
+using PaymentGateway.Api.Models.Merchant;
 
 namespace PaymentGateway.Api.Filters
 {
@@ -36,6 +37,20 @@ namespace PaymentGateway.Api.Filters
 
             if (string.IsNullOrWhiteSpace(key))
             {
+                // could return the expected type?
+                //var currnetRequest = context.HttpContext.Request.ReadFromJsonAsync<PaymentRequest>();
+
+                //new PaymentResponse
+                //{
+                //    Id = payment.Id,
+                //    Amount = request.Amount,
+                //    Currency = request.Currency,
+                //    CardNumberLastFour = MaskCardNumber(request.CardNumber),
+                //    ExpiryMonth = request.ExpiryMonth,
+                //    ExpiryYear = request.ExpiryYear,
+                //    Status = paymentStatus.ToString(),
+                //};
+
                 context.Result = new BadRequestObjectResult("Missing Idempotency-Key header");
                 return;
             }

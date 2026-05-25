@@ -135,7 +135,7 @@ public class PaymentsControllerTests
             Currency = "GBP",
             ExpiryMonth = DateTime.Now.Month,
             ExpiryYear = DateTime.Now.Year + 1,
-            CVV = "123"
+            Cvv = "123"
         };
 
         var httpRequest = new HttpRequestMessage(
@@ -198,7 +198,7 @@ public class PaymentsControllerTests
             Currency = "GBP",
             ExpiryMonth = DateTime.Now.Month,
             ExpiryYear = DateTime.Now.Year + 1,
-            CVV = "123"
+            Cvv = "123"
         };
         var httpRequest = new HttpRequestMessage(
         HttpMethod.Post,

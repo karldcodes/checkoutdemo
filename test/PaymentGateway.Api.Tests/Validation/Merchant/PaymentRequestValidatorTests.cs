@@ -36,7 +36,7 @@ namespace PaymentGateway.Api.Tests.Validation.Merchant
             ExpiryYear = DateTime.UtcNow.Year,
             Currency = "GBP",
             Amount = 100,
-            CVV = "123"
+            Cvv = "123"
         };
 
         [Fact]
@@ -200,11 +200,11 @@ namespace PaymentGateway.Api.Tests.Validation.Merchant
         public void Should_Fail_When_CVV_Is_Invalid(string cvv)
         {
             var request = ValidRequest();
-            request.CVV = cvv;
+            request.Cvv = cvv;
 
             var result = _validator.TestValidate(request);
 
-            result.ShouldHaveValidationErrorFor(x => x.CVV);
+            result.ShouldHaveValidationErrorFor(x => x.Cvv);
         }
 
         [Theory]
@@ -213,11 +213,11 @@ namespace PaymentGateway.Api.Tests.Validation.Merchant
         public void Should_Pass_When_CVV_Is_Valid(string cvv)
         {
             var request = ValidRequest();
-            request.CVV = cvv;
+            request.Cvv = cvv;
 
             var result = _validator.TestValidate(request);
 
-            result.ShouldNotHaveValidationErrorFor(x => x.CVV);
+            result.ShouldNotHaveValidationErrorFor(x => x.Cvv);
         }
     }
 }

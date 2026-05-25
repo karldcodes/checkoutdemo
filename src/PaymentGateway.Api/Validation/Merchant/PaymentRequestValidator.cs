@@ -10,11 +10,19 @@ namespace PaymentGateway.Api.Validation.Merchant
 
     public class PaymentRequestValidator : AbstractValidator<PaymentRequest>
     {
-        private bool IsFutureDate(int month, int year)
+        private bool IsFutureDate(int expiryMonth, int expiryYear)
         {
-            var currentYear = DateTime.UtcNow.Year;
-            var currentMonth = DateTime.UtcNow.Month;
-            return (year > currentYear) || (year == currentYear && month >= currentMonth);
+            if (expiryYear < 100)
+            {
+                expiryYear += 2000; // Convert 2-digit year to 4-digit year
+            }
+
+            // Card expires at the END of the expiry month
+            var expiryDate = new DateTime(expiryYear, expiryMonth, 1)
+                .AddMonths(1)
+                .AddDays(-1);
+
+            return expiryDate > DateTime.UtcNow.Date;
         }
 
         /*
@@ -38,9 +46,9 @@ namespace PaymentGateway.Api.Validation.Merchant
 
             RuleFor(payment => payment.ExpiryYear)
             .NotEmpty()
-            .WithMessage("Expiry year is required.")
-            .InclusiveBetween(DateTime.UtcNow.Year, DateTime.UtcNow.Year + 20) // Assuming cards won't have an expiry date more than 20 years in the future
-            .WithMessage("Expiry year is invalid.");
+            .WithMessage("Expiry year is required.");
+            //.InclusiveBetween(DateTime.UtcNow.Year, DateTime.UtcNow.Year + 20) // Assuming cards won't have an expiry date more than 20 years in the future
+            //.WithMessage("Expiry year is invalid.");
 
             When(payment => payment.ExpiryMonth != 0 && payment.ExpiryYear != 0, () =>
             {
@@ -61,7 +69,7 @@ namespace PaymentGateway.Api.Validation.Merchant
                 .GreaterThan(0)
                 .WithMessage("Amount must be greater than zero.");
 
-            RuleFor(payment => payment.CVV)
+            RuleFor(payment => payment.Cvv)
                 .NotEmpty()
                 .WithMessage("CVV is required.")
                 .Length(3, 4)
