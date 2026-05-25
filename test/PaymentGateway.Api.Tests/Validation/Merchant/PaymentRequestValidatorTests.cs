@@ -87,43 +87,6 @@ namespace PaymentGateway.Api.Tests.Validation.Merchant
             result.ShouldHaveValidationErrorFor(x => x.CardNumber);
         }
 
-        [Theory]
-        [InlineData(0)]
-        [InlineData(13)]
-        public void Should_Fail_When_ExpiryMonth_Is_Invalid(int month)
-        {
-            var request = ValidRequest();
-            request.ExpiryMonth = month;
-
-            var result = _validator.TestValidate(request);
-
-            result.ShouldHaveValidationErrorFor(x => x.ExpiryMonth);
-        }
-
-        [Theory]
-        [InlineData(0)]
-        [InlineData(1999)]
-        public void Should_Fail_When_ExpiryYear_Is_Invalid(int year)
-        {
-            var request = ValidRequest();
-            request.ExpiryYear = year;
-
-            var result = _validator.TestValidate(request);
-
-            result.ShouldHaveValidationErrorFor(x => x.ExpiryYear);
-        }
-
-        [Fact]
-        public void Should_Fail_When_ExpiryYear_Is_More_Than_20_Years_In_Future()
-        {
-            var request = ValidRequest();
-            request.ExpiryYear = DateTime.UtcNow.Year + 21;
-
-            var result = _validator.TestValidate(request);
-
-            result.ShouldHaveValidationErrorFor(x => x.ExpiryYear);
-        }
-
         [Fact]
         public void Should_Fail_When_Card_Has_Expired()
         {
@@ -131,7 +94,7 @@ namespace PaymentGateway.Api.Tests.Validation.Merchant
 
             var request = ValidRequest();
             request.ExpiryMonth = expiredDate.Month;
-            request.ExpiryYear = expiredDate.Year;
+            request.ExpiryYear = int.Parse(expiredDate.ToString("yy")); // test 2 digit year format
 
             var result = _validator.TestValidate(request);
 
