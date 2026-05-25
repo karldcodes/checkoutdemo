@@ -41,7 +41,7 @@ public partial class PaymentsController : ControllerBase // inheriting from cont
     {
         if (cardNumber.Length < 4)
             return "****"; // Not a valid card number, mask completely
-        return new string('*', cardNumber.Length - 4) + cardNumber[^4..];
+        return cardNumber[^4..];
     }
 
 
@@ -84,10 +84,10 @@ public partial class PaymentsController : ControllerBase // inheriting from cont
         {
             Amount = request.Amount,
             Currency = request.Currency,
-            CardNumber = MaskCardNumber(request.CardNumber),
+            CardNumber = MaskCardNumber(request.CardNumber), // only last four digits should be stored for security reasons
             ExpiryMonth = request.ExpiryMonth,
             ExpiryYear = request.ExpiryYear,
-            Cvv = request.Cvv,
+            //Cvv = request.Cvv, // CVV should not be stored as per PCI DSS compliance?
             Status = paymentStatus,
             AuthorizationCode = acquiringBankResponse?.PaymentResponse?.AuthorizationCode ?? ""
         };
