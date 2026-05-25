@@ -79,7 +79,8 @@ public partial class PaymentsController : ControllerBase // inheriting from cont
             paymentStatus = acquiringBankResponse.Status;
         }
 
-        // save payment to repository
+        // save payment to repository 
+        // As this is a demo project, we are not implementing retry logic for failures while saving to the repository.
         var payment = new Payment
         {
             Amount = request.Amount,
