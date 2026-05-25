@@ -29,13 +29,10 @@ sequenceDiagram
 
     PaymentGateway-)Validator: PaymentRequest
     Validator-)PaymentGateway: ValidationResult
-    alt FailedValidation
-        PaymentGateway-)Merchant: 400
-    else Passed validation
-
-    PaymentGateway-)AcquiringBank: PaymentRequest
-    AcquiringBank-)PaymentGateway: PaymentResponse
     
+    alt Passed validation
+        PaymentGateway-)AcquiringBank: PaymentRequest
+        AcquiringBank-)PaymentGateway: PaymentResponse
     end
 
     PaymentGateway-)PaymentRepository: Save
@@ -46,6 +43,10 @@ sequenceDiagram
 
     alt RejectedStatus
         PaymentGateway-)Merchant: 400 Rejected status PaymentResponse
+    end
+
+    alt RejectedStatus
+        PaymentGateway-)Merchant: 400 Failed validation - Rejected status PaymentResponse
     end
 
     PaymentGateway-)Merchant: Authorized status PaymentResponse
