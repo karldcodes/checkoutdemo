@@ -4,7 +4,7 @@ This gateway allows a merchant to send a payment request to an acquiring bank an
 
 Payments are also stored in the gateway along with the process status and can be retrieved via the payments get endpoint.
 
-```
+```mermaid
 sequenceDiagram
     Merchant-)PaymentGateway: /login
     PaymentGateway-)Auth: Verify login
