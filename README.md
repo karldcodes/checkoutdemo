@@ -11,6 +11,7 @@ sequenceDiagram
     Auth-)PaymentGateway: JWT token (1 hour)
     PaymentGateway-)Merchant: JWT
     Merchant-)PaymentGateway: /api/payments PaymentRequest
+    
     alt NotAuthorized
         PaymentGateway-)Merchant: 401
     end
@@ -66,6 +67,7 @@ sequenceDiagram
 * No observability platform needed to be setup and logging to the console is acceptable
 * The gateway does not need to be containerized or scaled
 * There is only one acquiring bank
+* The data back from the acquiring bank doesnt need validation
 
 # Architecture
 
