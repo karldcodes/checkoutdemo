@@ -130,7 +130,7 @@ public partial class PaymentsController : ControllerBase // inheriting from cont
         if (payment == null)
         {
             PaymentsLog.PaymentNotFound(_logger, id);
-            return NotFound();
+            return NotFound(new PaymentResponse());
         }
 
         PaymentsLog.PaymentFound(_logger, id);
