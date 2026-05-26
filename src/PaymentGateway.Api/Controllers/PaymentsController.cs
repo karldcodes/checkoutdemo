@@ -68,6 +68,7 @@ public partial class PaymentsController : ControllerBase // inheriting from cont
         else
         {
             // call acquiring bank as validation is successful
+            // in real app we could also validate the response back from the acquiring bank
             acquiringBankResponse = await _acquiringBank.SendPayment(new AcquiringBank.PaymentRequest
             {
                 Amount = request.Amount,
