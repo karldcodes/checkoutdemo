@@ -27,25 +27,25 @@ using Serilog.Formatting.Json;
 // Configure Serilog as it provides structured logging in json format these provide better searchability
 // and integration with log management systems, and also has built in support for OpenTelemetry which
 // allows us to correlate logs with traces and metrics for better observability.
-Log.Logger = new LoggerConfiguration()
-    .MinimumLevel.Information()
-    .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
-    .Enrich.FromLogContext()
-    .Enrich.WithProperty("Application", Environment.GetEnvironmentVariable("ServiceName") ?? "PaymentGateway")
-    .Enrich.WithProperty("Environment", Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT"))
-    .WriteTo.Console(new JsonFormatter())
-    // In a real application, you would configure the OpenTelemetry sink to send logs
-    //.WriteTo.OpenTelemetry(options =>
-    //{
-    //    options.Endpoint = "http://localhost:4317"; // OTLP endpoint
-    //    options.Protocol = OtlpProtocol.Grpc;
-    //    options.ResourceAttributes = new Dictionary<string, object>
-    //    {
-    //        ["service.name"] = "your-service-name",
-    //        ["service.version"] = "1.0.0"
-    //    };
-    //})
-    .CreateLogger();
+//Log.Logger = new LoggerConfiguration()
+//    .MinimumLevel.Information()
+//    .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
+//    .Enrich.FromLogContext()
+//    .Enrich.WithProperty("Application", Environment.GetEnvironmentVariable("ServiceName") ?? "PaymentGateway")
+//    .Enrich.WithProperty("Environment", Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT"))
+//    .WriteTo.Console(new JsonFormatter())
+//    // In a real application, you would configure the OpenTelemetry sink to send logs
+//    //.WriteTo.OpenTelemetry(options =>
+//    //{
+//    //    options.Endpoint = "http://localhost:4317"; // OTLP endpoint
+//    //    options.Protocol = OtlpProtocol.Grpc;
+//    //    options.ResourceAttributes = new Dictionary<string, object>
+//    //    {
+//    //        ["service.name"] = "your-service-name",
+//    //        ["service.version"] = "1.0.0"
+//    //    };
+//    //})
+//    .CreateLogger();
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -118,6 +118,11 @@ builder.Services.AddOpenTelemetry()
         .AddHttpClientInstrumentation()
         .AddRuntimeInstrumentation()
         .AddMeter("PaymentGateway.Api.Metrics")
+        .AddConsoleExporter())
+    .WithLogging(logging => logging
+        /* Note: ConsoleExporter is used for demo purpose only. In production
+           environment, ConsoleExporter should be replaced with other exporters
+           (for example, OTLP Exporter). */
         .AddConsoleExporter());
 
 //https://oneuptime.com/blog/post/2026-02-06-opentelemetry-metrics-aspnet-core-web-apis/view
